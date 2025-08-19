@@ -1,10 +1,11 @@
-﻿
-using UdonSharp;
-using UnityEngine;
-using VRC.SDKBase;
-using VRC.Udon;
 
-public class CueRackManager : UdonSharpBehaviour
+
+using Basis;
+using UnityEngine;
+
+
+
+public class CueRackManager : MonoBehaviour
 {
     void Start()
     {

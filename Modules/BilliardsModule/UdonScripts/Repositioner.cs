@@ -1,40 +1,62 @@
-﻿using System;
-using UdonSharp;
-using UnityEngine;
-using VRC.SDKBase;
+using Basis;
+using Basis.Scripts.BasisSdk.Interactions;
+using Basis.Scripts.Device_Management.Devices;
+using System;
 
-[UdonBehaviourSyncMode(BehaviourSyncMode.None)]
-public class Repositioner : UdonSharpBehaviour
+using UnityEngine;
+
+
+
+public class Repositioner : MonoBehaviour
 {
     [NonSerialized] public int idx;
 
     private BilliardsModule table;
-    private VRC_Pickup pickup;
+    private BasisPickupInteractable pickup;
 
     public void _Init(BilliardsModule table_, int idx_)
     {
         table = table_;
         idx = idx_;
 
-        pickup = (VRC_Pickup)GetComponent(typeof(VRC_Pickup));
+        pickup = (BasisPickupInteractable)GetComponent(typeof(BasisPickupInteractable));
+        pickup.OnPickupUse += OnPickupUse;
+        pickup.OnInteractStartEvent += OnPickup;
+        pickup.OnInteractEndEvent += OnDrop;
     }
 
-    public override void OnPickup()
+    private void OnPickupUse(BasisPickUpUseMode mode)
+    {
+        switch (mode)
+        {
+            case BasisPickUpUseMode.OnPickUpUseUp:
+                OnPickupUseUp();
+                break;
+            case BasisPickUpUseMode.OnPickUpUseDown:
+                OnPickupUseDown();
+                break;
+            case BasisPickUpUseMode.OnPickUpStillDown:
+
+                break;
+        }
+    }
+
+    public void OnPickup(BasisInput Input)
     {
         table.repositionManager._BeginReposition(this);
     }
 
-    public override void OnDrop()
+    public  void OnDrop(BasisInput Input)
     {
         table.repositionManager._EndReposition(this);
     }
 
-    public override void OnPickupUseDown()
+    public void OnPickupUseDown()
     {
         table.repositionManager.onUseDown();
     }
 
-    public override void OnPickupUseUp()
+    public void OnPickupUseUp()
     {
         table.repositionManager.onUseUp();
     }

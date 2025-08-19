@@ -1,11 +1,13 @@
-﻿
-using System;
-using UdonSharp;
-using UnityEngine;
-using VRC.SDKBase;
 
-[UdonBehaviourSyncMode(BehaviourSyncMode.None)]
-public class RepositionManager : UdonSharpBehaviour
+using Basis;
+using Basis.Scripts.Networking.NetworkedAvatar;
+using System;
+
+using UnityEngine;
+
+
+
+public class RepositionManager : MonoBehaviour
 {
 
     private BilliardsModule table;
@@ -186,7 +188,7 @@ public class RepositionManager : UdonSharpBehaviour
 
     private bool canReposition(Repositioner grip)
     {
-        VRCPlayerApi self = Networking.LocalPlayer;
+        BasisNetworkPlayer self = BasisNetworkPlayer.LocalPlayer;
         if (!table.gameLive)
         {
             return false;

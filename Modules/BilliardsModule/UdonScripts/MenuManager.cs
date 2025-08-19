@@ -1,12 +1,14 @@
 using System;
-using UdonSharp;
+
 using UnityEngine;
 using UnityEngine.UI;
-using VRC.SDKBase;
-using TMPro;
 
-[UdonBehaviourSyncMode(BehaviourSyncMode.None)]
-public class MenuManager : UdonSharpBehaviour
+using TMPro;
+using Basis;
+using Basis.Scripts.Networking.NetworkedAvatar;
+
+
+public class MenuManager : MonoBehaviour
 {
     [SerializeField] private byte[] timerValues = new byte[] { 0, 60, 45, 30, 15, 10, 5 };
 
@@ -43,7 +45,7 @@ public class MenuManager : UdonSharpBehaviour
         if (!Initialized)
         {
             Initialized = true;
-            Transform menuJoin = table.transform.Find("intl.menu/MenuAnchor/JoinMenu");
+            Transform menuJoin = table.transform.Find("JoinMenu");
             if (menuJoin)
             {
                 joinMenuPosition = menuJoin.localPosition;
@@ -86,7 +88,7 @@ public class MenuManager : UdonSharpBehaviour
                 lobbyNames[i].text = string.Empty;
                 continue;
             }
-            VRCPlayerApi player = VRCPlayerApi.GetPlayerById(table.playerIDsLocal[i]);
+            BasisNetworkPlayer player = BasisNetworkPlayer.GetPlayerById(table.playerIDsLocal[i]);
             if (player == null)
             {
                 lobbyNames[i].text = "Free slot";
@@ -126,34 +128,34 @@ public class MenuManager : UdonSharpBehaviour
     public void _RefreshGameMode()
     {
         string modeName = "";
-        uint mode = (uint)table.GetProgramVariable("gameModeLocal");
-        Transform selection = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/ModeSelection");
+        uint mode = (uint)table.gameModeLocal;
+        Transform selection = table.transform.Find("LobbyMenu/GameMode/ModeSelection");
         Transform selectionPoint;
         switch (mode)
         {
             case 0:
                 modeName = "8 Ball";
-                selectionPoint = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/SelectionPoints/8ball");
+                selectionPoint = table.transform.Find("LobbyMenu/GameMode/SelectionPoints/8ball");
                 table.setTransform(selectionPoint, selection, true);
                 break;
             case 1:
                 modeName = "9 Ball";
-                selectionPoint = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/SelectionPoints/9ball");
+                selectionPoint = table.transform.Find("LobbyMenu/GameMode/SelectionPoints/9ball");
                 table.setTransform(selectionPoint, selection, true);
                 break;
             case 2:
                 modeName = "4 Ball JP";
-                selectionPoint = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/SelectionPoints/4ballJP");
+                selectionPoint = table.transform.Find("LobbyMenu/GameMode/SelectionPoints/4ballJP");
                 table.setTransform(selectionPoint, selection, true);
                 break;
             case 3:
                 modeName = "4 Ball KR";
-                selectionPoint = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/SelectionPoints/4ballKR");
+                selectionPoint = table.transform.Find("LobbyMenu/GameMode/SelectionPoints/4ballKR");
                 table.setTransform(selectionPoint, selection, true);
                 break;
             case 4:
                 modeName = "Snooker 6 Red";
-                selectionPoint = table.transform.Find("intl.menu/MenuAnchor/LobbyMenu/GameMode/SelectionPoints/6red");
+                selectionPoint = table.transform.Find("LobbyMenu/GameMode/SelectionPoints/6red");
                 table.setTransform(selectionPoint, selection, true);
                 break;
         }
@@ -161,12 +163,12 @@ public class MenuManager : UdonSharpBehaviour
     }
     public void _RefreshPhysics()
     {
-        physicsDisplay.text = (string)table.currentPhysicsManager.GetProgramVariable("PHYSICSNAME");
+        physicsDisplay.text = (string)table.currentPhysicsManager.PHYSICSNAME;
     }
 
     public void _RefreshTable()
     {
-        tableDisplay.text = (string)table.tableModels[table.tableModelLocal].GetProgramVariable("TABLENAME");
+        tableDisplay.text = (string)table.tableModels[table.tableModelLocal].TABLENAME;
     }
 
     public void _RefreshToggleSettings()

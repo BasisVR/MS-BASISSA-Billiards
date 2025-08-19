@@ -1,11 +1,10 @@
-﻿// #define HT8B_DRAW_REGIONS
+// #define HT8B_DRAW_REGIONS
+using Basis;
 using System;
-using BestHTTP.SecureProtocol.Org.BouncyCastle.Crypto.Modes.Gcm;
-using UdonSharp;
 using UnityEngine;
 
-[UdonBehaviourSyncMode(BehaviourSyncMode.None)]
-public class StandardPhysicsManager : UdonSharpBehaviour
+
+public class StandardPhysicsManager : MonoBehaviour
 {
     public string PHYSICSNAME = "<color=#678AC2>Standard</color>";
 #if HT_QUEST

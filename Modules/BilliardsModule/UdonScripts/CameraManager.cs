@@ -1,18 +1,14 @@
-﻿
-using UdonSharp;
-using UnityEngine;
-using VRC.SDKBase;
-using VRC.Udon;
 
-[UdonBehaviourSyncMode(BehaviourSyncMode.None)]
-public class CameraManager : UdonSharpBehaviour
+
+using Basis;
+using Basis.Scripts.Networking.NetworkedAvatar;
+using UnityEngine;
+public class CameraManager : MonoBehaviour
 {
     [SerializeField] private GameObject[] staticCameras;
     [SerializeField] private GameObject[] dynamicCameras;
 
     private BilliardsModule table;
-
-    private bool isEnabled;
 
     private GameObject[] cameras;
     private int currentCam;
@@ -57,10 +53,10 @@ public class CameraManager : UdonSharpBehaviour
             CueController controller = table.activeCue;
             if (controller == null) return;
 
-            VRCPlayerApi player = controller._GetHolder();
+            BasisNetworkPlayer player = controller._GetHolder();
 
             Vector3 position;
-            if (Utilities.IsValid(player))
+            if (BasisUtilities.IsValid(player))
             {
                 position = player.GetPosition();
             }

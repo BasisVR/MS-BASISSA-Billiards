@@ -1,15 +1,16 @@
-﻿
-using UdonSharp;
+
+
+using Basis;
 using UnityEngine;
 
-[UdonBehaviourSyncMode(BehaviourSyncMode.None)]
-public class ButtonUndo : UdonSharpBehaviour
+
+public class ButtonUndo : MonoBehaviour
 {
     [SerializeField] string methodName = "_Undo";
-    [SerializeField] UdonSharpBehaviour script;
+    [SerializeField] MonoBehaviour script;
 
-    public override void Interact()
+    public void Interact()
     {
-        script.SendCustomEvent(methodName);
+      //  script.s(methodName);
     }
 }

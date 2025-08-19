@@ -1,12 +1,13 @@
-﻿
-using System;
-using UdonSharp;
-using UnityEngine;
-using VRC.SDKBase;
-using VRC.Udon;
 
-[UdonBehaviourSyncMode(BehaviourSyncMode.None)]
-public class LegacyPhysicsManager : UdonSharpBehaviour
+using Basis;
+using System;
+
+using UnityEngine;
+
+
+
+
+public class LegacyPhysicsManager : MonoBehaviour
 {
     public string PHYSICSNAME = "<color=#4287F5>Legacy</color>";
 #if HT_QUEST

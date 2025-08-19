@@ -1,13 +1,45 @@
-﻿
+using Basis;
+using LiteNetLib;
 using System;
-using UdonSharp;
-using VRC.SDKBase;
-
-[UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
-public class PlayerSlot : UdonSharpBehaviour
+public class PlayerSlot : BasisNetworkBehaviour
 {
-    [UdonSynced][NonSerialized] public byte slot = byte.MaxValue;
-    [UdonSynced][NonSerialized] public bool leave = false;
+
+    [System.Serializable]
+    public struct SyncPlayerSessionData
+    {
+        public byte slot;     // Player slot (default: 255)
+        public bool leave;    // Whether the player wants to leave
+
+        public SyncPlayerSessionData(byte slot, bool leave)
+        {
+            this.slot = slot;
+            this.leave = leave;
+        }
+
+        // Convert to a byte array (2 bytes)
+        public byte[] ToBytes()
+        {
+            byte[] data = new byte[2];
+            data[0] = slot;
+            data[1] = leave ? (byte)1 : (byte)0;
+            return data;
+        }
+
+        // Convert from a byte array (expects 2 bytes)
+        public static SyncPlayerSessionData FromBytes(byte[] data)
+        {
+            if (data == null || data.Length < 2)
+            {
+                return new SyncPlayerSessionData(byte.MaxValue, false); // fallback default
+            }
+
+            return new SyncPlayerSessionData(
+                data[0],
+                data[1] != 0
+            );
+        }
+    }
+    public SyncPlayerSessionData SyncPlayerSession;
     private NetworkingManager networkingManager;
 
     public void _Init(NetworkingManager networkingManager_)
@@ -18,9 +50,9 @@ public class PlayerSlot : UdonSharpBehaviour
     public void JoinSlot(int slot_)
     {
         if (slot_ > 3) return;
-        slot = (byte)slot_;
-        leave = false;
-        Networking.SetOwner(Networking.LocalPlayer, gameObject);
+        SyncPlayerSession.slot = (byte)slot_;
+        SyncPlayerSession.leave = false;
+        TakeOwnership();// Networking.SetOwner(BasisNetworkPlayer.LocalPlayer, gameObject);
         RequestSerialization();
         OnDeserialization();
     }
@@ -28,17 +60,27 @@ public class PlayerSlot : UdonSharpBehaviour
     public void LeaveSlot(int slot_)
     {
         if (slot_ > 3) return;
-        slot = (byte)slot_;
-        leave = true;
-        Networking.SetOwner(Networking.LocalPlayer, gameObject);
+        SyncPlayerSession.slot = (byte)slot_;
+        SyncPlayerSession.leave = true;
+        TakeOwnership();// Networking.SetOwner(BasisNetworkPlayer.LocalPlayer, gameObject);
         RequestSerialization();
         OnDeserialization();
     }
 
-    public override void OnDeserialization()
+    private void RequestSerialization()
     {
+        SendCustomNetworkEvent(SyncPlayerSession.ToBytes(), DeliveryMethod.ReliableOrdered);
+    }
+    public override void OnNetworkMessage(ushort PlayerID, byte[] buffer, DeliveryMethod DeliveryMethod)
+    {
+        SyncPlayerSession = SyncPlayerSessionData.FromBytes(buffer);
+        OnDeserialization();
+    }
+    public void OnDeserialization()
+    {
+
         if (networkingManager == null) return;
-        if (slot > 3) return;
+        if (SyncPlayerSession.slot > 3) return;
 
         networkingManager._OnPlayerSlotChanged(this);
     }

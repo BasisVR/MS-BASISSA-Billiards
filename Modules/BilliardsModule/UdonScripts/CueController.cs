@@ -1,36 +1,29 @@
-﻿using System;
-using UdonSharp;
+using Basis;
+using Basis.Scripts.Networking.NetworkedAvatar;
+using LiteNetLib;
+using System;
+using System.IO;
 using UnityEngine;
-using VRC.SDKBase;
-//
-[UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
-public class CueController : UdonSharpBehaviour
+public class CueController : BasisNetworkBehaviour
 {
     [SerializeField] private BilliardsModule table;
 
-    [SerializeField] private GameObject primary;
-    [SerializeField] private GameObject secondary;
+    [SerializeField] private CueGrip primary;
+    [SerializeField] private CueGrip secondary;
+    public BasisObjectSyncNetworking PrimaryNetworking;
+    public BasisObjectSyncNetworking SecondaryNetworking;
+
     [SerializeField] private GameObject desktop;
     [SerializeField] private GameObject body;
     [SerializeField] private GameObject cuetip;
 
-    // [UdonSynced] private byte syncedCueSkin;
-    // private int activeCueSkin;
-
     private bool holderIsDesktop;
-    [UdonSynced] private bool syncedHolderIsDesktop;
 
     private bool primaryHolding;
-    [UdonSynced] private bool primaryLocked;
-    [UdonSynced] private Vector3 primaryLockPos;
-    [UdonSynced] private Vector3 primaryLockDir;
 
     private bool secondaryHolding;
-    [UdonSynced] private bool secondaryLocked;
-    [UdonSynced] private Vector3 secondaryLockPos;
 
     private float cueScaleMine = 1;
-    [UdonSynced] private float cueScale = 1;
     private float cueSmoothingLocal = 1;
     private float cueSmoothing = 30;
 
@@ -52,7 +45,79 @@ public class CueController : UdonSharpBehaviour
 
     private int[] authorizedOwners;
 
-    [NonSerialized] public bool TeamBlue;
+    [NonSerialized]
+    public bool TeamBlue;
+
+    public CueLockState SynccueLockState;
+
+    [System.Serializable]
+    public struct CueLockState
+    {
+        public bool syncedHolderIsDesktop;
+
+        public bool primaryLocked;
+        public Vector3 primaryLockPos;
+        public Vector3 primaryLockDir;
+
+        public bool secondaryLocked;
+        public Vector3 secondaryLockPos;
+
+        public float cueScale;
+
+        // Convert to byte array
+        public byte[] ToByteArray()
+        {
+            using (MemoryStream stream = new MemoryStream())
+            using (BinaryWriter writer = new BinaryWriter(stream))
+            {
+                writer.Write(syncedHolderIsDesktop);
+
+                writer.Write(primaryLocked);
+                WriteVector3(writer, primaryLockPos);
+                WriteVector3(writer, primaryLockDir);
+
+                writer.Write(secondaryLocked);
+                WriteVector3(writer, secondaryLockPos);
+
+                writer.Write(cueScale);
+
+                return stream.ToArray();
+            }
+        }
+
+        // Convert from byte array
+        public static CueLockState FromByteArray(byte[] data)
+        {
+            CueLockState state = new CueLockState();
+            using (MemoryStream stream = new MemoryStream(data))
+            using (BinaryReader reader = new BinaryReader(stream))
+            {
+                state.syncedHolderIsDesktop = reader.ReadBoolean();
+
+                state.primaryLocked = reader.ReadBoolean();
+                state.primaryLockPos = ReadVector3(reader);
+                state.primaryLockDir = ReadVector3(reader);
+
+                state.secondaryLocked = reader.ReadBoolean();
+                state.secondaryLockPos = ReadVector3(reader);
+
+                state.cueScale = reader.ReadSingle();
+            }
+            return state;
+        }
+
+        private static void WriteVector3(BinaryWriter writer, Vector3 vec)
+        {
+            writer.Write(vec.x);
+            writer.Write(vec.y);
+            writer.Write(vec.z);
+        }
+
+        private static Vector3 ReadVector3(BinaryReader reader)
+        {
+            return new Vector3(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle());
+        }
+    }
     public void _Init()
     {
         cueRenderer = this.transform.Find("body/render").GetComponent<Renderer>();
@@ -74,31 +139,24 @@ public class CueController : UdonSharpBehaviour
         resetSecondaryOffset();
         _RefreshRenderer();
     }
-
-    public override void OnDeserialization()
+    public override void OnNetworkMessage(ushort PlayerID, byte[] buffer, DeliveryMethod DeliveryMethod)
     {
-        // int owner = Networking.GetOwner(this.gameObject).playerId;
-        // activeCueSkin = table._CanUseCueSkin(owner, syncedCueSkin) ? syncedCueSkin : 0;
-        // refreshCueSkin();
-
+        SynccueLockState = CueLockState.FromByteArray(buffer);
         refreshCueScale();
     }
-
-    // private void refreshCueSkin()
-    // {
-    //     cueRenderer = this.transform.Find("body/render").GetComponent<Renderer>();
-    //     cueRenderer.materials[1].SetTexture("_MainTex", table.cueSkins[activeCueSkin]);
-    // }
-
+    private void RequestSerialization()
+    {
+        SendCustomNetworkEvent(SynccueLockState.ToByteArray(), DeliveryMethod.ReliableOrdered);
+    }
     private void refreshCueScale()
     {
-        float factor = Mathf.Clamp(cueScale, 0.5f, 1.5f) - 0.5f;
-        body.transform.localScale = new Vector3(Mathf.Lerp(0.7f, 1.3f, factor), Mathf.Lerp(0.7f, 1.3f, factor), cueScale);
+        float factor = Mathf.Clamp(SynccueLockState.cueScale, 0.5f, 1.5f) - 0.5f;
+        body.transform.localScale = new Vector3(Mathf.Lerp(0.7f, 1.3f, factor), Mathf.Lerp(0.7f, 1.3f, factor), SynccueLockState.cueScale);
     }
 
     private void refreshCueSmoothing()
     {
-        if (!Networking.LocalPlayer.IsOwner(gameObject) || !primaryHolding)
+        if (!IsLocalOwner() || !primaryHolding)
         {
             cueSmoothing = 30;
             return;
@@ -124,7 +182,7 @@ public class CueController : UdonSharpBehaviour
 
     public void _ResetCuePosition()
     {
-        if (Networking.LocalPlayer.IsOwner(gameObject))
+        if (IsLocalOwner())
         {
             resetPosition();
         }
@@ -159,14 +217,14 @@ public class CueController : UdonSharpBehaviour
     }
     private void FixedUpdate()
     {
-        if (Networking.LocalPlayer.IsOwner(gameObject))
+        if (IsLocalOwner())
         {
             if (primaryHolding)
             {
                 // must not be shooting, since that takes control of the cue object
                 if (!table.desktopManager._IsInUI() || !table.desktopManager._IsShooting())
                 {
-                    if (!primaryLocked || table.noLockingLocal)
+                    if (!SynccueLockState.primaryLocked || table.noLockingLocal)
                     {
                         // base of cue goes to primary
                         body.transform.position = lagPrimaryPosition;
@@ -178,7 +236,7 @@ public class CueController : UdonSharpBehaviour
                             secondary.transform.position = primary.transform.TransformPoint(secondaryOffset);
                             body.transform.LookAt(lagSecondaryPosition);
                         }
-                        else if (!secondaryLocked)
+                        else if (!SynccueLockState.secondaryLocked)
                         {
                             // holding secondary hand. have cue track the second grip
                             body.transform.LookAt(lagSecondaryPosition);
@@ -186,7 +244,7 @@ public class CueController : UdonSharpBehaviour
                         else
                         {
                             // locking secondary hand. lock rotation on point
-                            body.transform.LookAt(secondaryLockPos);
+                            body.transform.LookAt(SynccueLockState.secondaryLockPos);
                         }
 
                         // copy z rotation of primary
@@ -198,9 +256,9 @@ public class CueController : UdonSharpBehaviour
                     else
                     {
                         // locking primary hand. fix cue in line and ignore secondary hand
-                        Vector3 delta = lagPrimaryPosition - primaryLockPos;
-                        float distance = Vector3.Dot(delta, primaryLockDir);
-                        body.transform.position = primaryLockPos + primaryLockDir * distance;
+                        Vector3 delta = lagPrimaryPosition - SynccueLockState.primaryLockPos;
+                        float distance = Vector3.Dot(delta, SynccueLockState.primaryLockDir);
+                        body.transform.position = SynccueLockState.primaryLockPos + SynccueLockState.primaryLockDir * distance;
                     }
 
                     UpdateDesktopPosition();
@@ -219,16 +277,16 @@ public class CueController : UdonSharpBehaviour
         else if (!table.localPlayerDistant && table.gameLive)
         {
             // other player has cue
-            if (!syncedHolderIsDesktop)
+            if (!SynccueLockState.syncedHolderIsDesktop)
             {
                 // other player is in vr, use the grips which update faster
-                if (!primaryLocked || table.noLockingLocal)
+                if (!SynccueLockState.primaryLocked || table.noLockingLocal)
                 {
                     // base of cue goes to primary
                     body.transform.position = lagPrimaryPosition;
 
                     // holding in primary hand
-                    if (!secondaryLocked)
+                    if (!SynccueLockState.secondaryLocked)
                     {
                         // have cue track the second grip
                         body.transform.LookAt(lagSecondaryPosition);
@@ -236,15 +294,15 @@ public class CueController : UdonSharpBehaviour
                     else
                     {
                         // locking secondary hand. lock rotation on point
-                        body.transform.LookAt(secondaryLockPos);
+                        body.transform.LookAt(SynccueLockState.secondaryLockPos);
                     }
                 }
                 else
                 {
                     // locking primary hand. fix cue in line and ignore secondary hand
-                    Vector3 delta = lagPrimaryPosition - primaryLockPos;
-                    float distance = Vector3.Dot(delta, primaryLockDir);
-                    body.transform.position = primaryLockPos + primaryLockDir * distance;
+                    Vector3 delta = lagPrimaryPosition - SynccueLockState.primaryLockPos;
+                    float distance = Vector3.Dot(delta, SynccueLockState.primaryLockDir);
+                    body.transform.position = SynccueLockState.primaryLockPos + SynccueLockState.primaryLockDir * distance;
                 }
             }
             else
@@ -263,7 +321,7 @@ public class CueController : UdonSharpBehaviour
         // must occur at the end after we've finished updating the transform's position
         // otherwise vrchat will try to change it because it's a pickup
         lagPrimaryPosition = Vector3.Lerp(lagPrimaryPosition, primary.transform.position, 1 - Mathf.Pow(0.5f, Time.fixedDeltaTime * cueSmoothing));
-        if (!secondaryLocked)
+        if (!SynccueLockState.secondaryLocked)
             lagSecondaryPosition = Vector3.Lerp(lagSecondaryPosition, secondary.transform.position, 1 - Mathf.Pow(0.5f, Time.fixedDeltaTime * cueSmoothing));
     }
 
@@ -283,10 +341,9 @@ public class CueController : UdonSharpBehaviour
 
     private void takeOwnership()
     {
-        Networking.SetOwner(Networking.LocalPlayer, this.gameObject);
-        Networking.SetOwner(Networking.LocalPlayer, primary);
-        Networking.SetOwner(Networking.LocalPlayer, secondary);
-        Networking.SetOwner(Networking.LocalPlayer, desktop);
+        TakeOwnership();
+        PrimaryNetworking.TakeOwnership();
+        SecondaryNetworking.TakeOwnership();
     }
 
     private void resetPosition()
@@ -305,14 +362,13 @@ public class CueController : UdonSharpBehaviour
     {
         takeOwnership();
 
-        holderIsDesktop = !Networking.LocalPlayer.IsUserInVR();
-        syncedHolderIsDesktop = holderIsDesktop;
+        holderIsDesktop = !BasisNetworkPlayer.LocalPlayer.IsUserInVR();
+        SynccueLockState.syncedHolderIsDesktop = holderIsDesktop;
         primaryHolding = true;
-        primaryLocked = false;
-        // syncedCueSkin = table.activeCueSkin;
-        cueScale = cueScaleMine;
+        SynccueLockState.primaryLocked = false;
+        SynccueLockState.cueScale = cueScaleMine;
         RequestSerialization();
-        OnDeserialization();
+        refreshCueScale();
 
         refreshCueSmoothing();
 
@@ -324,15 +380,17 @@ public class CueController : UdonSharpBehaviour
     public void _OnPrimaryDrop()
     {
         primaryHolding = false;
-        syncedHolderIsDesktop = false;
+        SynccueLockState.syncedHolderIsDesktop = false;
         RequestSerialization();
-        OnDeserialization();
+        refreshCueScale();
 
         refreshCueSmoothing();
 
         // hide secondary
-        if (!holderIsDesktop) secondaryController._Hide();
-
+        if (!holderIsDesktop)
+        {
+            secondaryController._Hide();
+        }
         // clamp again
         clampControllers();
 
@@ -363,9 +421,9 @@ public class CueController : UdonSharpBehaviour
     {
         if (!holderIsDesktop)
         {
-            primaryLocked = true;
-            primaryLockPos = body.transform.position;
-            primaryLockDir = body.transform.forward.normalized;
+            SynccueLockState.primaryLocked = true;
+            SynccueLockState.primaryLockPos = body.transform.position;
+            SynccueLockState.primaryLockDir = body.transform.forward.normalized;
             RequestSerialization();
 
             table._TriggerCueActivate();
@@ -376,7 +434,7 @@ public class CueController : UdonSharpBehaviour
     {
         if (!holderIsDesktop)
         {
-            primaryLocked = false;
+            SynccueLockState.primaryLocked = false;
             RequestSerialization();
 
             table._TriggerCueDeactivate();
@@ -386,7 +444,7 @@ public class CueController : UdonSharpBehaviour
     public void _OnSecondaryPickup()
     {
         secondaryHolding = true;
-        secondaryLocked = false;
+        SynccueLockState.secondaryLocked = false;
         RequestSerialization();
     }
 
@@ -399,15 +457,15 @@ public class CueController : UdonSharpBehaviour
 
     public void _OnSecondaryUseDown()
     {
-        secondaryLocked = true;
-        secondaryLockPos = secondary.transform.position;
+        SynccueLockState.secondaryLocked = true;
+        SynccueLockState.secondaryLockPos = secondary.transform.position;
 
         RequestSerialization();
     }
 
     public void _OnSecondaryUseUp()
     {
-        secondaryLocked = false;
+        SynccueLockState.secondaryLocked = false;
 
         RequestSerialization();
     }
@@ -441,19 +499,19 @@ public class CueController : UdonSharpBehaviour
     public void setScale(float scale)
     {
         cueScaleMine = scale;
-        if (!Networking.IsOwner(gameObject)) return;
-        cueScale = cueScaleMine;
+        if (!IsLocalOwner()) return;
+        SynccueLockState.cueScale = cueScaleMine;
         RequestSerialization();
-        OnDeserialization();
+        refreshCueScale();
     }
 
     public void resetScale()
     {
-        if (!Networking.IsOwner(gameObject)) return;
-        if (cueScale == 1) return;
-        cueScale = 1;
+        if (!IsLocalOwner()) return;
+        if (SynccueLockState.cueScale == 1) return;
+        SynccueLockState.cueScale = 1;
         RequestSerialization();
-        OnDeserialization();
+        refreshCueScale();
     }
 
     private void clampControllers()
@@ -477,8 +535,8 @@ public class CueController : UdonSharpBehaviour
         return cuetip;
     }
 
-    public VRCPlayerApi _GetHolder()
+    public BasisNetworkPlayer _GetHolder()
     {
-        return ((VRC_Pickup)primary.GetComponent(typeof(VRC_Pickup))).currentPlayer;
+        return PrimaryNetworking.currentOwnedPlayer;
     }
 }

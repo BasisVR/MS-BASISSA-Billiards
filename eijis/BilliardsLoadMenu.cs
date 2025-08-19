@@ -1,12 +1,7 @@
-﻿
-using UdonSharp;
+using Basis;
 using UnityEngine;
 using UnityEngine.UI;
-using VRC.SDKBase;
-using VRC.Udon;
-
-[UdonBehaviourSyncMode(BehaviourSyncMode.None)]
-public class BilliardsLoadMenu : UdonSharpBehaviour
+public class BilliardsLoadMenu : MonoBehaviour
 {
     public BilliardsModule billiardsModule;
     public InputField inputField;

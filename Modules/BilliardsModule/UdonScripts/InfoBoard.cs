@@ -1,11 +1,12 @@
-﻿
-using UdonSharp;
-using UnityEngine;
-using VRC.SDKBase;
-using VRC.Udon;
 
-[UdonBehaviourSyncMode(BehaviourSyncMode.None)]
-public class InfoBoard : UdonSharpBehaviour
+
+using Basis;
+using UnityEngine;
+
+
+
+
+public class InfoBoard : MonoBehaviour
 {
     [SerializeField] private GameObject[] modify;
     [SerializeField] private Texture2D english;

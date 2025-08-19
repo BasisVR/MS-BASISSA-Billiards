@@ -1,8 +1,8 @@
-﻿Shader "metaphira/Transparent Orb"
+Shader "metaphira/Transparent Orb"
 {
     Properties
     {
-        [HDR] _Color("Main Color", Color) = (1,1,1,1)
+        [HDR] _Color("Main Color", Color) = (1, 1, 1, 1)
         _FresnelBias("Fresnel Bias", Float) = 0
         _FresnelScale("Fresnel Scale", Float) = 1
         _FresnelPower("Fresnel Power", Float) = 1
@@ -10,55 +10,74 @@
 
     SubShader
     {
-        Tags { "Queue" = "Transparent+13" }
+        Tags
+        {
+            "RenderPipeline"="UniversalPipeline"
+            "RenderType"="Transparent"
+            "Queue"="Transparent+13"
+        }
 
-        ZWrite Off
+        HLSLINCLUDE
+        #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+
+        CBUFFER_START(UnityPerMaterial)
+        float4 _Color;
+        float _FresnelBias;
+        float _FresnelScale;
+        float _FresnelPower;
+        CBUFFER_END
+        ENDHLSL
 
         Pass
         {
+            Tags { "LightMode" = "UniversalForward" }
             Blend One One
+            ZWrite Off
 
-            CGPROGRAM
+            HLSLPROGRAM
 
             #pragma vertex vert
             #pragma fragment frag
+            // GPU Instancing
+            #pragma multi_compile_instancing
 
-            #include "UnityCG.cginc"
-
-            struct appdata_t
+            struct Attributes
             {
-                float4 pos : POSITION;
-                half3 normal : NORMAL;
+                float4 positionOS : POSITION;
+                float3 normal : NORMAL;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
             };
-
-            struct v2f
+            
+            struct Varyings
             {
-                float4 pos : SV_POSITION;
+                float4 positionCS : SV_POSITION;
                 float fresnel : TEXCOORD0;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
+                UNITY_VERTEX_OUTPUT_STEREO
             };
 
-
-            float4 _Color;
-            fixed _FresnelBias;
-            fixed _FresnelScale;
-            fixed _FresnelPower;
-
-            v2f vert(appdata_t v)
+            Varyings vert(Attributes IN)
             {
-                v2f o;
-                o.pos = UnityObjectToClipPos(v.pos);
-
-                float3 i = normalize(ObjSpaceViewDir(v.pos));
-                o.fresnel = _FresnelBias + _FresnelScale * pow(1 + dot(i, v.normal), _FresnelPower);
+                Varyings o;
+                UNITY_SETUP_INSTANCE_ID(IN);
+                UNITY_TRANSFER_INSTANCE_ID(IN, o);
+                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
+                o.positionCS = TransformObjectToHClip(IN.positionOS);
+                float3 positionWS = TransformObjectToWorld(IN.positionOS).xyz;
+                float3 i = normalize(mul((float3x3)unity_WorldToObject, GetWorldSpaceViewDir(positionWS)));
+                o.fresnel = _FresnelBias + _FresnelScale * pow(1 + dot(i, IN.normal), _FresnelPower);
                 return o;
             }
 
-            fixed4 frag(v2f i) : SV_Target
+            float4 frag(Varyings IN) : SV_Target
             {
-                return lerp(fixed4(0.0,0.0,0.0,0.0), _Color, saturate(1 - i.fresnel));
+                UNITY_SETUP_INSTANCE_ID(IN);
+                UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(IN);
+
+                return lerp(float4(0.0, 0.0, 0.0, 0.0), _Color, saturate(1 - IN.fresnel));
             }
 
-            ENDCG
+            ENDHLSL
         }
     }
 }

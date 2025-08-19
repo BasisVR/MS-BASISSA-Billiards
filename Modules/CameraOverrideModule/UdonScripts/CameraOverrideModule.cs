@@ -1,14 +1,16 @@
-﻿
+
+using Basis;
+using Basis.Scripts.Networking.NetworkedAvatar;
 using System;
-using UdonSharp;
+
 using UnityEngine;
-using VRC.SDKBase;
-using VRC.Udon;
+
+
 
 namespace Metaphira.Modules.CameraOverride
 {
-    [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
-    public class CameraOverrideModule : UdonSharpBehaviour
+    
+    public class CameraOverrideModule : MonoBehaviour
     {
         [NonSerialized] public const int RENDER_MODE_DISABLED = 0;
         [NonSerialized] public const int RENDER_MODE_VR = 1;
@@ -51,6 +53,7 @@ namespace Metaphira.Modules.CameraOverride
                 GameObject overlay = bound.transform.GetChild(0).gameObject;
                 overlay.GetComponent<MeshRenderer>().material.SetVector("_ActivationRange", new Vector4(boundPosition.x, boundPosition.y, boundPosition.z, minScale / 2));
             }
+            BasisNetworkPlayer.OnPlayerJoined += OnPlayerJoined;
         }
 
         private void Update()
@@ -64,9 +67,9 @@ namespace Metaphira.Modules.CameraOverride
             }
         }
 
-        public override void OnPlayerJoined(VRCPlayerApi player)
+        public void OnPlayerJoined(BasisNetworkPlayer player)
         {
-            if (!player.isLocal) return;
+            if (!player.IsLocal) return;
 
             setBoundsActive(player.IsUserInVR());
         }
@@ -149,11 +152,11 @@ namespace Metaphira.Modules.CameraOverride
                 if (targetCamera == null) return;
 
                 targetCamera.targetTexture = null;
-                targetCamera.stereoTargetEye = StereoTargetEyeMask.None;
+               // targetCamera.stereoTargetEye = StereoTargetEyeMask.None;
                 targetCamera.depth = 52;
                 targetCamera.enabled = true;
 
-                referenceCamera.stereoTargetEye = StereoTargetEyeMask.None;
+              //  referenceCamera.stereoTargetEye = StereoTargetEyeMask.None;
                 referenceCamera.depth = 51;
                 referenceCamera.backgroundColor = clearColor;
                 referenceCamera.enabled = true;

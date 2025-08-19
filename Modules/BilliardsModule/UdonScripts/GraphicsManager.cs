@@ -1,12 +1,14 @@
-﻿
-using UdonSharp;
+
+
 using UnityEngine;
-using VRC.SDKBase;
+
 using TMPro;
 using System.Data;
+using Basis;
+using Basis.Scripts.Networking.NetworkedAvatar;
 
-[UdonBehaviourSyncMode(BehaviourSyncMode.None)]
-public class GraphicsManager : UdonSharpBehaviour
+
+public class GraphicsManager : MonoBehaviour
 {
     [Header("4 Ball")]
     [SerializeField] GameObject fourBallPoint;
@@ -55,7 +57,7 @@ public class GraphicsManager : UdonSharpBehaviour
     private uint ANDROID_UNIFORM_CLOCK = 0x00u;
     private uint ANDROID_CLOCK_DIVIDER = 0x8u;
 
-    private VRCPlayerApi[] savedPlayers = new VRCPlayerApi[4];
+    private BasisNetworkPlayer[] savedPlayers = new BasisNetworkPlayer[4];
 
     private Material scorecard;
     private GameObject scorecard_gameobject;
@@ -252,20 +254,20 @@ public class GraphicsManager : UdonSharpBehaviour
     {
         if (players[2] == -1 || !table.teamsLocal)
         {
-            playerNames[0].text = "<size=13>" + _FormatName(VRCPlayerApi.GetPlayerById(players[0]));
+            playerNames[0].text = "<size=13>" + _FormatName(BasisNetworkPlayer.GetPlayerById(players[0]));
         }
         else
         {
-            playerNames[0].text = "<size=7><line-height=8.25>" + _FormatName(VRCPlayerApi.GetPlayerById(players[0])) + "\n" + _FormatName(VRCPlayerApi.GetPlayerById(players[2]));
+            playerNames[0].text = "<size=7><line-height=8.25>" + _FormatName(BasisNetworkPlayer.GetPlayerById(players[0])) + "\n" + _FormatName(BasisNetworkPlayer.GetPlayerById(players[2]));
         }
 
         if (players[3] == -1 || !table.teamsLocal)
         {
-            playerNames[1].text = "<size=13>" + _FormatName(VRCPlayerApi.GetPlayerById(players[1]));
+            playerNames[1].text = "<size=13>" + _FormatName(BasisNetworkPlayer.GetPlayerById(players[1]));
         }
         else
         {
-            playerNames[1].text = "<size=7><line-height=8.25>" + _FormatName(VRCPlayerApi.GetPlayerById(players[1])) + "\n" + _FormatName(VRCPlayerApi.GetPlayerById(players[3]));
+            playerNames[1].text = "<size=7><line-height=8.25>" + _FormatName(BasisNetworkPlayer.GetPlayerById(players[1])) + "\n" + _FormatName(BasisNetworkPlayer.GetPlayerById(players[3]));
         }
     }
 
@@ -277,7 +279,7 @@ public class GraphicsManager : UdonSharpBehaviour
             winnerText.gameObject.SetActive(true);
             winnerText.text = "Game reset!";
             numGameResets++;
-            SendCustomEventDelayedSeconds(nameof(disableWinnerText), 15f);
+            table.networkingManager.SendCustomEventDelayedSeconds(disableWinnerText, 15f);
         }
         else
         {
@@ -300,8 +302,8 @@ public class GraphicsManager : UdonSharpBehaviour
 
     public void _SetWinners(uint winnerId, int[] players)
     {
-        VRCPlayerApi player1 = winnerId == 0 ? VRCPlayerApi.GetPlayerById(players[0]) : VRCPlayerApi.GetPlayerById(players[1]);
-        VRCPlayerApi player2 = winnerId == 0 ? VRCPlayerApi.GetPlayerById(players[2]) : VRCPlayerApi.GetPlayerById(players[3]);
+        BasisNetworkPlayer player1 = winnerId == 0 ? BasisNetworkPlayer.GetPlayerById(players[0]) : BasisNetworkPlayer.GetPlayerById(players[1]);
+        BasisNetworkPlayer player2 = winnerId == 0 ? BasisNetworkPlayer.GetPlayerById(players[2]) : BasisNetworkPlayer.GetPlayerById(players[3]);
 
         winnerText.gameObject.SetActive(true);
         winnerText.gameObject.transform.localRotation = Quaternion.identity;
@@ -314,25 +316,25 @@ public class GraphicsManager : UdonSharpBehaviour
             winnerText.text = _FormatName(player1) + " and " + _FormatName(player2) + " win!";
         }
         numGameResets++;
-        SendCustomEventDelayedSeconds(nameof(disableWinnerText), 15f);
+        table.networkingManager.SendCustomEventDelayedSeconds(disableWinnerText, 15f);
     }
 
-    public string _FormatName(VRCPlayerApi player)
+    public string _FormatName(BasisNetworkPlayer player)
     {
         if (player == null) { return "No one"; }
-        if (table.nameColorHook == null) return player.displayName;
+        //  if (table.nameColorHook == null) return player.displayName;
         if (player.displayName == null) return string.Empty;
 
-        table.nameColorHook.SetProgramVariable("inOwner", player.displayName);
-        table.nameColorHook.SendCustomEvent("_GetNameColor");
+        //table.nameColorHook.SetProgramVariable("inOwner", player.displayName);
+        //  table.nameColorHook.SendCustomEvent("_GetNameColor");
 
-        string color = (string)table.nameColorHook.GetProgramVariable("outColor");
-        if (color == "rainbow")
-        {
-            return rainbow(player.displayName);
-        }
-
-        return $"<color=#{color}>{player.displayName}</color>";
+        // string color = (string)table.nameColorHook.GetProgramVariable("outColor");
+        //if (color == "rainbow")
+        //{
+        //   return rainbow(player.displayName);
+        // }
+        //<color=#{color}></color
+        return $"{player.displayName}>";
     }
 
     private string rainbow(string name)
@@ -400,7 +402,7 @@ public class GraphicsManager : UdonSharpBehaviour
         fourBallPoint.GetComponent<MeshFilter>().sharedMesh = plus ? fourBallMeshPlus : fourBallMeshMinus;
         fourBallPoint.transform.localPosition = pos;
         fourBallPoint.transform.localScale = Vector3.zero;
-        fourBallPoint.transform.LookAt(Networking.LocalPlayer.GetPosition());
+        fourBallPoint.transform.LookAt(BasisNetworkPlayer.LocalPlayer.GetPosition());
     }
 
     public void _FlashTableLight()
@@ -718,7 +720,8 @@ int uniform_cue_colour;
 
         _ShowBalls();
     }
-
+    public const string MainTex = "_BaseMap";
+    public const string EmissionMap = "_EmissionMap";
     public void _UpdateTableColorScheme()
     {
         if (table.is9Ball)  // 9 Ball / USA colours
@@ -730,7 +733,8 @@ int uniform_cue_colour;
             pColourErr = table.k_colour_foul;
 
             // 9 ball only uses one colourset / cloth colour
-            ballMaterial.SetTexture("_MainTex", table.textureSets[1]);
+            ballMaterial.SetTexture(MainTex, table.textureSets[1]);
+            ballMaterial.SetTexture(EmissionMap, table.textureSets[1]);
         }
         else if (table.is4Ball)
         {
@@ -741,7 +745,8 @@ int uniform_cue_colour;
             pColour2 = table.k_colour_foul;
             pColourErr = table.k_colour_foul;
 
-            ballMaterial.SetTexture("_MainTex", table.textureSets[1]);
+            ballMaterial.SetTexture(MainTex, table.textureSets[1]);
+            ballMaterial.SetTexture(EmissionMap, table.textureSets[1]);
         }
         else if (table.isSnooker6Red)
         {
@@ -751,7 +756,8 @@ int uniform_cue_colour;
             pColour0 = table.k_snookerTeamColour_0;
             pColour1 = table.k_snookerTeamColour_1;
 
-            ballMaterial.SetTexture("_MainTex", table.textureSets[2]);
+            ballMaterial.SetTexture(MainTex, table.textureSets[2]);
+            ballMaterial.SetTexture(EmissionMap, table.textureSets[2]);
         }
         else // Standard 8 ball derivatives
         {
@@ -761,7 +767,8 @@ int uniform_cue_colour;
             pColour0 = table.k_teamColour_spots;
             pColour1 = table.k_teamColour_stripes;
 
-            ballMaterial.SetTexture("_MainTex", usColors ? usColorTexture : table.textureSets[0]);
+            ballMaterial.SetTexture(MainTex, usColors ? usColorTexture : table.textureSets[0]);
+            ballMaterial.SetTexture(EmissionMap, usColors ? usColorTexture : table.textureSets[0]);
         }
     }
 
@@ -821,7 +828,7 @@ int uniform_cue_colour;
         }
         else
         {
-            if (table.gameStateLocal > 1 && (table.networkingManager.winningTeamSynced != 2)) // game has started or finished, && hasn't been reset
+            if (table.gameStateLocal > 1 && (table.networkingManager.SyncState.winningTeamSynced != 2)) // game has started or finished, && hasn't been reset
             {
                 _OnGameStarted(); // make sure all visuals are set
 
@@ -985,7 +992,8 @@ int uniform_cue_colour;
             {
                 for (int i = 0; i < 16; i++)
                 {
-                    ballMaterial.SetTexture("_MainTex", usColors ? usColorTexture : table.textureSets[0]);
+                    ballMaterial.SetTexture(MainTex, usColors ? usColorTexture : table.textureSets[0]);
+                    ballMaterial.SetTexture(EmissionMap, usColors ? usColorTexture : table.textureSets[0]);
                 }
                 _UpdateScorecard();
             }
@@ -1041,7 +1049,7 @@ int uniform_cue_colour;
         // prevent probe being rendered twice in one frame (late joiners)
         if (!renderingProbe)
         {
-            SendCustomEventDelayedFrames(nameof(renderProbe), 1);
+            table.networkingManager.SendCustomEventDelayedFrames(renderProbe, 1);
             renderingProbe = true;
         }
     }

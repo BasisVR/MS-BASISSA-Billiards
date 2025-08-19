@@ -1,9 +1,10 @@
-﻿using UdonSharp;
+
 using UnityEngine;
 using UnityEditor;
+using Basis;
 
-[UdonBehaviourSyncMode(BehaviourSyncMode.None)]
-public class ModelData : UdonSharpBehaviour
+
+public class ModelData : MonoBehaviour
 {
         public string TABLENAME = "Pool Table";
         [Header("Table Visuals")]

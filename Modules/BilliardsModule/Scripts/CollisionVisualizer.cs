@@ -1,12 +1,12 @@
-﻿#define HT8B_DRAW_REGIONS
+#define HT8B_DRAW_REGIONS
 
 using UnityEngine;
-using VRC.Udon;
+
 
 [ExecuteInEditMode]
 public class CollisionVisualizer : MonoBehaviour
 {
-    [SerializeField] UdonBehaviour table;
+    [SerializeField] BilliardsModule table;
     [Tooltip("Only works in play mode")]
     public bool getFromTable = false;
     [Tooltip("This function hasn't been updated for MS-VRCSA, may show something incorrect")]
@@ -607,27 +607,27 @@ public class CollisionVisualizer : MonoBehaviour
     {
         if (getFromTable && Application.isPlaying)
         {
-            tableWidth = (float)table.GetProgramVariable("k_TABLE_WIDTH");
-            tableHeight = (float)table.GetProgramVariable("k_TABLE_HEIGHT");
-            pocketWidthCorner = (float)table.GetProgramVariable("k_POCKET_WIDTH_CORNER");
-            pocketHeightCorner = (float)table.GetProgramVariable("k_POCKET_WIDTH_CORNER");
-            pocketRadiusSide = (float)table.GetProgramVariable("k_POCKET_RADIUS_SIDE");
-            pocketDepthSide = (float)table.GetProgramVariable("k_POCKET_DEPTH_SIDE");
-            cushionRadius = (float)table.GetProgramVariable("k_CUSHION_RADIUS");
-            pocketInnerRadiusCorner = (float)table.GetProgramVariable("k_INNER_RADIUS_CORNER");
-            pocketInnerRadiusSide = (float)table.GetProgramVariable("k_INNER_RADIUS_SIDE");
-            pocketInnerRadiusCorner2 = (float)table.GetProgramVariable("k_INNER_RADIUS_CORNER2");
-            pocketInnerRadiusSide2 = (float)table.GetProgramVariable("k_INNER_RADIUS_SIDE2");
-            cornerPocket = (Vector3)table.GetProgramVariable("k_vE"); // k_vE
-            sidePocket = (Vector3)table.GetProgramVariable("k_vF"); // k_vF
-            cornerPocket2 = (Vector3)table.GetProgramVariable("k_vE2"); // k_vE
-            sidePocket2 = (Vector3)table.GetProgramVariable("k_vF2"); // k_vF
-            facingAngleCorner = (float)table.GetProgramVariable("k_FACING_ANGLE_CORNER");
-            facingAngleSide = (float)table.GetProgramVariable("k_FACING_ANGLE_SIDE");
-            baulkLine = (float)table.GetProgramVariable("K_BAULK_LINE");
-            blackSpot = (float)table.GetProgramVariable("K_BLACK_SPOT");
-            semiCircleRadius = (float)table.GetProgramVariable("k_SEMICIRCLERADIUS");
-            pinkSpot = (float)table.GetProgramVariable("k_SPOT_POSITION_X");
+            tableWidth = (float)table.k_TABLE_WIDTH;
+            tableHeight = (float)table.k_TABLE_HEIGHT;
+            pocketWidthCorner = (float)table.k_POCKET_WIDTH_CORNER;
+            pocketHeightCorner = (float)table.k_POCKET_WIDTH_CORNER;
+            pocketRadiusSide = (float)table.k_POCKET_RADIUS_SIDE;
+            pocketDepthSide = (float)table.k_POCKET_DEPTH_SIDE;
+            cushionRadius = (float)table.k_CUSHION_RADIUS;
+            pocketInnerRadiusCorner = (float)table.k_INNER_RADIUS_CORNER;
+            pocketInnerRadiusSide = (float)table.k_INNER_RADIUS_SIDE;
+            pocketInnerRadiusCorner2 = (float)table.k_INNER_RADIUS_CORNER2;
+            pocketInnerRadiusSide2 = (float)table.k_INNER_RADIUS_SIDE2;
+            cornerPocket = (Vector3)table.k_vE; // k_vE
+            sidePocket = (Vector3)table.k_vF; // k_vF
+            cornerPocket2 = (Vector3)table.k_vE2; // k_vE
+            sidePocket2 = (Vector3)table.k_vF2; // k_vF
+            facingAngleCorner = (float)table.k_FACING_ANGLE_CORNER;
+            facingAngleSide = (float)table.k_FACING_ANGLE_SIDE;
+            baulkLine = (float)table.K_BAULK_LINE;
+            blackSpot = (float)table.K_BLACK_SPOT;
+            semiCircleRadius = (float)table.k_SEMICIRCLERADIUS;
+            pinkSpot = (float)table.k_SPOT_POSITION_X;
         }
 
         _phy_ball_table_new();

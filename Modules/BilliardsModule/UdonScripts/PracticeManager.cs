@@ -1,9 +1,11 @@
-﻿
-using System;
-using UdonSharp;
 
-[UdonBehaviourSyncMode(BehaviourSyncMode.None)]
-public class PracticeManager : UdonSharpBehaviour
+using Basis;
+using System;
+using UnityEngine;
+
+
+
+public class PracticeManager : MonoBehaviour
 {
     private BilliardsModule table;
 
@@ -44,7 +46,7 @@ public class PracticeManager : UdonSharpBehaviour
             return;
         }*/
 
-        int stateIdLocal = table.networkingManager.stateIdSynced;
+        int stateIdLocal = table.networkingManager.SyncState.stateIdSynced;
 
         if (stateIdLocal == currentPtr) return; // already seen
 

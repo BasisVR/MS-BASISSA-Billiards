@@ -1,11 +1,14 @@
-﻿using System;
-using UdonSharp;
-using UnityEngine;
-using VRC.SDKBase;
-using VRC.Udon;
+using Basis;
+using Basis.Scripts.Networking.NetworkedAvatar;
+using System;
 
-[UdonBehaviourSyncMode(BehaviourSyncMode.None)]
-public class UIButton : UdonSharpBehaviour
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+
+
+
+public class UIButton : MonoBehaviour
 {
     private readonly int BUTTON_NORMAL = 0;
     private readonly int BUTTON_TOGGLE = 1;
@@ -25,7 +28,7 @@ public class UIButton : UdonSharpBehaviour
     [SerializeField] public AudioClip pressSound;
     [SerializeField] public AudioClip releaseSound;
 
-    [SerializeField] public UdonBehaviour callback;
+    [SerializeField] public MonoBehaviour callback;
 
     [NonSerialized] public bool disableInteractions;
 
@@ -64,7 +67,7 @@ public class UIButton : UdonSharpBehaviour
 
     private void Update()
     {
-        VRCPlayerApi player = Networking.LocalPlayer;
+        BasisNetworkPlayer player = BasisNetworkPlayer.LocalPlayer;
         if (player == null) return;
 
         if (!disableInteractions)
@@ -80,9 +83,9 @@ public class UIButton : UdonSharpBehaviour
         }
     }
 
-    private void tickDesktop(VRCPlayerApi player)
+    private void tickDesktop(BasisNetworkPlayer player)
     {
-        VRCPlayerApi.TrackingData headTracking = player.GetTrackingData(VRCPlayerApi.TrackingDataType.Head);
+        player.GetTrackingData( Basis.Scripts.TransformBinders.BoneControl.BasisBoneTrackedRole.Head,out var headTracking);
         RaycastHit hit;
 
         bool canClick =
@@ -97,8 +100,8 @@ public class UIButton : UdonSharpBehaviour
             )
             && hit.collider != null
             && hit.collider.gameObject == button;
-        bool isMouseDown = Input.GetKeyDown(KeyCode.Mouse0);
-        bool isMousePress = Input.GetKey(KeyCode.Mouse0);
+        bool isMouseDown = Mouse.current.leftButton.wasPressedThisFrame;
+        bool isMousePress = Mouse.current.leftButton.isPressed;
 
         desktopOutline.SetActive(canClick);
 
@@ -168,7 +171,7 @@ public class UIButton : UdonSharpBehaviour
         }
     }
 
-    private void tickVR(VRCPlayerApi player)
+    private void tickVR(BasisNetworkPlayer player)
     {
         // reset position, we'll incrementally move it down with each attempt at pressing
         // this.transform.localPosition = unpressedPosition;
@@ -220,7 +223,7 @@ public class UIButton : UdonSharpBehaviour
             }
         }
         {
-            Vector3 trackingPosition = transform.InverseTransformPoint(player.GetTrackingData(VRCPlayerApi.TrackingDataType.LeftHand).position);
+            Vector3 trackingPosition = transform.InverseTransformPoint(player.GetTrackingData(Basis.Scripts.TransformBinders.BoneControl.BasisBoneTrackedRole.LeftHand).position);
             if (isPositionValid(trackingPosition) && trackingPosition.y < bestPosition)
             {
                 bestPosition = trackingPosition.y;
@@ -228,7 +231,7 @@ public class UIButton : UdonSharpBehaviour
             }
         }
         {
-            Vector3 trackingPosition = transform.InverseTransformPoint(player.GetTrackingData(VRCPlayerApi.TrackingDataType.RightHand).position);
+            Vector3 trackingPosition = transform.InverseTransformPoint(player.GetTrackingData(Basis.Scripts.TransformBinders.BoneControl.BasisBoneTrackedRole.RightHand).position);
             if (isPositionValid(trackingPosition) && trackingPosition.y < bestPosition)
             {
                 bestPosition = trackingPosition.y;
@@ -236,7 +239,7 @@ public class UIButton : UdonSharpBehaviour
             }
         }
         {
-            Vector3 trackingPosition = transform.InverseTransformPoint(player.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position);
+            Vector3 trackingPosition = transform.InverseTransformPoint(player.GetTrackingData(Basis.Scripts.TransformBinders.BoneControl.BasisBoneTrackedRole.Head).position);
             if (isPositionValid(trackingPosition) && trackingPosition.y < bestPosition)
             {
                 bestPosition = trackingPosition.y;
@@ -279,8 +282,8 @@ public class UIButton : UdonSharpBehaviour
                 button.GetComponent<MeshRenderer>().material.mainTexture = toggleState ? buttonOn : buttonOff;
             }
 
-            if ((vibration & VIBRATE_LEFT) != 0) player.PlayHapticEventInHand(VRC_Pickup.PickupHand.Left, 0.02f, 1.0f, 1.0f);
-            if ((vibration & VIBRATE_RIGHT) != 0) player.PlayHapticEventInHand(VRC_Pickup.PickupHand.Right, 0.02f, 1.0f, 1.0f);
+            if ((vibration & VIBRATE_LEFT) != 0) player.PlayHaptic(Basis.Scripts.TransformBinders.BoneControl.BasisBoneTrackedRole.LeftHand, 0.02f, 1.0f, 1.0f);
+            if ((vibration & VIBRATE_RIGHT) != 0) player.PlayHaptic(Basis.Scripts.TransformBinders.BoneControl.BasisBoneTrackedRole.RightHand, 0.02f, 1.0f, 1.0f);
 
             sendPressedEvent();
         }
@@ -288,8 +291,8 @@ public class UIButton : UdonSharpBehaviour
         {
             buttonState = STATE_PUSHED;
 
-            if ((vibration & VIBRATE_LEFT) != 0) player.PlayHapticEventInHand(VRC_Pickup.PickupHand.Left, 0.02f, 1.0f, 1.0f);
-            if ((vibration & VIBRATE_RIGHT) != 0) player.PlayHapticEventInHand(VRC_Pickup.PickupHand.Right, 0.02f, 1.0f, 1.0f);
+            if ((vibration & VIBRATE_LEFT) != 0) player.PlayHaptic(Basis.Scripts.TransformBinders.BoneControl.BasisBoneTrackedRole.LeftHand, 0.02f, 1.0f, 1.0f);
+            if ((vibration & VIBRATE_RIGHT) != 0) player.PlayHaptic(Basis.Scripts.TransformBinders.BoneControl.BasisBoneTrackedRole.RightHand, 0.02f, 1.0f, 1.0f);
             if (releaseSound != null)
             {
                 AudioSource.PlayClipAtPoint(releaseSound, this.transform.position, 0.1f);
@@ -299,8 +302,8 @@ public class UIButton : UdonSharpBehaviour
         {
             buttonState = STATE_INACTIVE;
             
-            if ((vibration & VIBRATE_LEFT) != 0) player.PlayHapticEventInHand(VRC_Pickup.PickupHand.Left, 0.02f, 1.0f, 1.0f);
-            if ((vibration & VIBRATE_RIGHT) != 0) player.PlayHapticEventInHand(VRC_Pickup.PickupHand.Right, 0.02f, 1.0f, 1.0f);
+            if ((vibration & VIBRATE_LEFT) != 0) player.PlayHaptic(Basis.Scripts.TransformBinders.BoneControl.BasisBoneTrackedRole.LeftHand, 0.02f, 1.0f, 1.0f);
+            if ((vibration & VIBRATE_RIGHT) != 0) player.PlayHaptic(Basis.Scripts.TransformBinders.BoneControl.BasisBoneTrackedRole.RightHand, 0.02f, 1.0f, 1.0f);
             if (releaseSound != null)
             {
                 AudioSource.PlayClipAtPoint(releaseSound, this.transform.position, 0.1f);
@@ -310,8 +313,8 @@ public class UIButton : UdonSharpBehaviour
         {
             buttonState = STATE_INACTIVE;
 
-            if ((vibration & VIBRATE_LEFT) != 0) player.PlayHapticEventInHand(VRC_Pickup.PickupHand.Left, 0.02f, 1.0f, 1.0f);
-            if ((vibration & VIBRATE_RIGHT) != 0) player.PlayHapticEventInHand(VRC_Pickup.PickupHand.Right, 0.02f, 1.0f, 1.0f);
+            if ((vibration & VIBRATE_LEFT) != 0) player.PlayHaptic(Basis.Scripts.TransformBinders.BoneControl.BasisBoneTrackedRole.LeftHand, 0.02f, 1.0f, 1.0f);
+            if ((vibration & VIBRATE_RIGHT) != 0) player.PlayHaptic(Basis.Scripts.TransformBinders.BoneControl.BasisBoneTrackedRole.RightHand, 0.02f, 1.0f, 1.0f);
             if (releaseSound != null)
             {
                 AudioSource.PlayClipAtPoint(releaseSound, this.transform.position, 0.1f);
@@ -361,11 +364,10 @@ public class UIButton : UdonSharpBehaviour
 
     private void sendPressedEvent()
     {
-        if (callback == null) return;
-        callback.SetProgramVariable("inButton", this);
-        callback.SendCustomEvent("_OnButtonPressed");
+        //  if (callback == null) return;
+        // callback.SetProgramVariable("inButton", this);
+        // callback.SendCustomEvent("_OnButtonPressed");
     }
-
     public void _ResetButton()
     {
         if (!button) return;

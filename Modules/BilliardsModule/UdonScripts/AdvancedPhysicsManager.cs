@@ -1,10 +1,9 @@
 // #define HT8B_DRAW_REGIONS
 using System;
-using UdonSharp;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
-[UdonBehaviourSyncMode(BehaviourSyncMode.NoVariableSync)]
-public class AdvancedPhysicsManager : UdonSharpBehaviour
+public class AdvancedPhysicsManager : MonoBehaviour
 {
     public string PHYSICSNAME = "<color=#FFD700>Advanced V0.5M</color>";
     [SerializeField] AudioClip[] hitSounds;
@@ -336,31 +335,33 @@ public class AdvancedPhysicsManager : UdonSharpBehaviour
         // Cue angular velocity
         table._BeginPerf(table.PERF_PHYSICS_BALL);
         bool[] moved = new bool[balls.Length];
-
 #if UNITY_EDITOR
-        if (Test_Mode)
-        {
-            if ((sn_pocketed & 0x1U) == 0) // Cue ball is not pocketed
-            {
-                int Wi = Input.GetKey(KeyCode.W) ? 1 : 0; //inputs as ints
-                int Si = Input.GetKey(KeyCode.S) ? -1 : 0;
-                int Ai = Input.GetKey(KeyCode.A) ? -1 : 0;
-                int Di = Input.GetKey(KeyCode.D) ? 1 : 0;
-                int Ri = Input.GetKey(KeyCode.R) ? 1 : 0;
-                int Fi = Input.GetKey(KeyCode.F) ? -1 : 0;
-                float antiGrav = (Ri + Fi != 0) ? k_GRAVITY : 0;
-                Vector3 movedir = new Vector3(Ai + Di, Ri + Fi, Wi + Si) * Test_MoveSpeed * k_FIXED_TIME_STEP + Vector3.up * antiGrav * k_FIXED_TIME_STEP;
-                balls_V[0] += movedir;
-                int Ii = Input.GetKey(KeyCode.I) ? 1 : 0; //inputs as ints
-                int Ki = Input.GetKey(KeyCode.K) ? -1 : 0;
-                int Ji = Input.GetKey(KeyCode.J) ? -1 : 0;
-                int Li = Input.GetKey(KeyCode.L) ? 1 : 0;
-                int Oi = Input.GetKey(KeyCode.O) ? -1 : 0;
-                int Ui = Input.GetKey(KeyCode.U) ? 1 : 0;
-                Vector3 rotdir = new Vector3(Ii + Ki, Oi + Ui, Ji + Li) * Test_RotSpeed * k_FIXED_TIME_STEP;
-                balls_W[0] += rotdir;
-            }
-        }
+if (Test_Mode)
+{
+    if ((sn_pocketed & 0x1U) == 0) // Cue ball is not pocketed
+    {
+        int Wi = Keyboard.current.wKey.isPressed ? 1 : 0;
+        int Si = Keyboard.current.sKey.isPressed ? -1 : 0;
+        int Ai = Keyboard.current.aKey.isPressed ? -1 : 0;
+        int Di = Keyboard.current.dKey.isPressed ? 1 : 0;
+        int Ri = Keyboard.current.rKey.isPressed ? 1 : 0;
+        int Fi = Keyboard.current.fKey.isPressed ? -1 : 0;
+
+        float antiGrav = (Ri + Fi != 0) ? k_GRAVITY : 0;
+        Vector3 movedir = new Vector3(Ai + Di, Ri + Fi, Wi + Si) * Test_MoveSpeed * k_FIXED_TIME_STEP + Vector3.up * antiGrav * k_FIXED_TIME_STEP;
+        balls_V[0] += movedir;
+
+        int Ii = Keyboard.current.iKey.isPressed ? 1 : 0;
+        int Ki = Keyboard.current.kKey.isPressed ? -1 : 0;
+        int Ji = Keyboard.current.jKey.isPressed ? -1 : 0;
+        int Li = Keyboard.current.lKey.isPressed ? 1 : 0;
+        int Oi = Keyboard.current.oKey.isPressed ? -1 : 0;
+        int Ui = Keyboard.current.uKey.isPressed ? 1 : 0;
+
+        Vector3 rotdir = new Vector3(Ii + Ki, Oi + Ui, Ji + Li) * Test_RotSpeed * k_FIXED_TIME_STEP;
+        balls_W[0] += rotdir;
+    }
+}
 #endif
 
         // Run main simulation / inter-ball collision

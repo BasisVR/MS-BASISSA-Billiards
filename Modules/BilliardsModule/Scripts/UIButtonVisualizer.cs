@@ -1,25 +1,11 @@
-﻿using UnityEngine;
-using VRC.Udon;
+using UnityEngine;
+
 #if UNITY_EDITOR
-using UdonSharpEditor;
 using UnityEditor;
 #endif
 
 public class UIButtonVisualizer : MonoBehaviour
 {
-    // Start is called before the first frame update
-    void Start()
-    {
-
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-
-    }
-
-
 #if UNITY_EDITOR
     [CustomEditor(typeof(UIButtonVisualizer))]
     public class TriggerVisualizerEditor : Editor
@@ -30,12 +16,9 @@ public class UIButtonVisualizer : MonoBehaviour
         {
             UIButtonVisualizer visualizer = (UIButtonVisualizer)target;
             UIButton module = visualizer.GetComponent<UIButton>();
-
-            UdonBehaviour moduleBehaviour = UdonSharpEditorUtility.GetBackingUdonBehaviour(module);
-            moduleBehaviour.publicVariables.TryGetVariableValue(nameof(UIButton.buttonOff), out Texture2D buttonOff);
-            moduleBehaviour.publicVariables.TryGetVariableValue(nameof(UIButton.buttonOn), out Texture2D buttonOn);
-            moduleBehaviour.publicVariables.TryGetVariableValue(nameof(UIButton.outlineColor), out Color outlineColor);
-
+            var buttonOff = module.buttonOff;
+            var buttonOn = module.buttonOn;
+            var outlineColor = module.outlineColor;
             {
                 MeshRenderer renderer = visualizer.transform.Find("Visual/DesktopOutline").GetComponent<MeshRenderer>();
                 Material tempMaterial = new Material(renderer.sharedMaterial);

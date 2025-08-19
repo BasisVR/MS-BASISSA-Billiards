@@ -12,31 +12,50 @@
    }
    SubShader
    {
-      Tags { "RenderType" = "Opaque" }
-      LOD 200
+      Tags
+      {
+         "RenderPipeline" = "UniversalPipeline"
+         "RenderType" = "Opaque"
+         "Queue" = "Geometry"
+      }
+      LOD 300
+
+      HLSLINCLUDE
+      #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+
+      CBUFFER_START(UnityPerMaterial)
+      int _GameMode;
+      int _SolidsMode;
+      int _LeftScore;
+      int _RightScore;
+      CBUFFER_END
+      ENDHLSL
 
       Pass
       {
-         CGPROGRAM
+         Name "Forward"
+         Tags { "LightMode" = "UniversalForward" }
 
+         HLSLPROGRAM
          #pragma vertex vert
          #pragma fragment frag
-         // make fog work
-         #pragma multi_compile_fog
 
-         #include "UnityCG.cginc"
+         // GPU Instancing
+         #pragma multi_compile_instancing
 
-         struct appdata
+         struct Attributes
          {
-            float4 vertex : POSITION;
+            float4 positionOS : POSITION;
             float2 uv : TEXCOORD0;
+            UNITY_VERTEX_INPUT_INSTANCE_ID
          };
 
-         struct v2f
+         struct Varyings
          {
+            float4 positionCS : SV_POSITION;
             float2 uv : TEXCOORD0;
-            UNITY_FOG_COORDS(1)
-            float4 vertex : SV_POSITION;
+            UNITY_VERTEX_INPUT_INSTANCE_ID
+            UNITY_VERTEX_OUTPUT_STEREO
          };
 
          static const float4 BLACK = float4(0, 0, 0, 0);
@@ -44,17 +63,14 @@
 
          static const float OFFSET = 0.03125;
 
-         sampler2D _EightBallTex;
-         sampler2D _NineBallTex;
-         sampler2D _FourBallTex;
-         int _GameMode;
+         TEXTURE2D(_EightBallTex);
+         TEXTURE2D(_NineBallTex);
+         TEXTURE2D(_FourBallTex);
 
-         int _SolidsMode;
-         int _LeftScore;
-         int _RightScore;
+         SamplerState sampler_linear_clamp;
 
          // color of each ball as it appears on the scoreboard, left to right
-         float4 _Colors[15]; /* = {
+         static float4 _Colors[15] = {
             float4(255, 210, 0, 255) / 255, // yellow
             float4(0, 118, 227, 255) / 255, // blue
             float4(190, 13, 18, 255) / 255, // red
@@ -72,58 +88,65 @@
             float4(190, 13, 18, 255) / 255, // red
             float4(0, 118, 227, 255) / 255, // blue
             float4(255, 210, 0, 255) / 255 // yellow
-         };*/
+         };
 
-         v2f vert(appdata v)
+         Varyings vert(Attributes IN)
          {
-            v2f o;
-            o.vertex = UnityObjectToClipPos(v.vertex);
-            o.uv = v.uv;
+            Varyings o;
+            UNITY_SETUP_INSTANCE_ID(IN);
+            UNITY_TRANSFER_INSTANCE_ID(IN, o);
+            UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
+
+            o.positionCS = TransformObjectToHClip(IN.positionOS);
+            o.uv = IN.uv;
+
             return o;
          }
 
-         fixed4 frag(v2f i) : SV_Target
+         float4 frag(Varyings IN) : SV_Target
          {
-            fixed4 base;
-            float leftEnd;
-            float rightEnd;
+            UNITY_SETUP_INSTANCE_ID(IN);
+            UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(IN);
+            float4 base = BLACK;
+            float leftEnd = 0;
+            float rightEnd = 0;
             switch (_GameMode)
             {
-               case 0:
+               case 0 :
                {
-                  base = tex2D(_EightBallTex, i.uv);
+                  base = SAMPLE_TEXTURE2D(_EightBallTex, sampler_linear_clamp, IN.uv);
                   leftEnd = _LeftScore * 0.0625;
                   rightEnd = _RightScore * 0.0625;
                   break;
                }
-               case 1:
+               case 1 :
                {
-                  base = tex2D(_NineBallTex, i.uv);
+                  base = SAMPLE_TEXTURE2D(_NineBallTex, sampler_linear_clamp, IN.uv);
                   break;
                }
                //2 and 3 are the same
-               case 2:
+               case 2 :
                {
-                  base = tex2D(_FourBallTex, i.uv);
+                  base = SAMPLE_TEXTURE2D(_FourBallTex, sampler_linear_clamp, IN.uv);
                   leftEnd = _LeftScore * 0.04681905;
                   rightEnd = _RightScore * 0.04681905;
                   break;
                }
-               case 3:
+               case 3 :
                {
-                  base = tex2D(_FourBallTex, i.uv);
+                  base = SAMPLE_TEXTURE2D(_FourBallTex, sampler_linear_clamp, IN.uv);
                   leftEnd = _LeftScore * 0.04681905;
                   rightEnd = _RightScore * 0.04681905;
                   break;
                }
-               default:
+               default :
                {
-                  return float4(0,0,0,0);
+                  return float4(0, 0, 0, 0);
                }
             }
 
-            fixed4 leftComponent = BLACK;
-            float leftStart = i.uv.x - OFFSET;
+            float4 leftComponent = BLACK;
+            float leftStart = IN.uv.x - OFFSET;
             if (leftStart < leftEnd)
             {
                int index = _GameMode == 0 ? leftStart / 0.0625 : 0;
@@ -139,8 +162,8 @@
                }
             }
 
-            fixed4 rightComponent = BLACK;
-            float rightStart = 1.0 - i.uv.x - OFFSET;
+            float4 rightComponent = BLACK;
+            float rightStart = 1.0 - IN.uv.x - OFFSET;
             if (rightStart < rightEnd)
             {
                int index = _GameMode == 0 ? 15 - rightStart / 0.0625 : 1;
@@ -156,13 +179,80 @@
                }
             }
 
-            fixed4 white = base.rrrr;
-            fixed4 color = leftComponent + rightComponent;
+            float4 white = base.rrrr;
+            float4 color = leftComponent + rightComponent;
 
-            return white + color;
+            return saturate(white + color);
          }
 
-         ENDCG
+         ENDHLSL
+      }
+
+      Pass {
+         Name "ShadowCaster"
+         Tags { "LightMode" = "ShadowCaster" }
+
+         ZWrite On
+         ZTest LEqual
+
+         HLSLPROGRAM
+         #pragma vertex ShadowPassVertex
+         #pragma fragment ShadowPassFragment
+
+         // GPU Instancing
+         #pragma multi_compile_instancing
+         //#pragma multi_compile _ DOTS_INSTANCING_ON
+
+         #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonMaterial.hlsl"
+         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SurfaceInput.hlsl"
+         #include "Packages/com.unity.render-pipelines.universal/Shaders/ShadowCasterPass.hlsl"
+
+         ENDHLSL
+      }
+
+      Pass {
+         Name "DepthOnly"
+         Tags { "LightMode" = "DepthOnly" }
+
+         ColorMask 0
+         ZWrite On
+         ZTest LEqual
+
+         HLSLPROGRAM
+         #pragma vertex DepthOnlyVertex
+         #pragma fragment DepthOnlyFragment
+
+         // GPU Instancing
+         #pragma multi_compile_instancing
+         //#pragma multi_compile _ DOTS_INSTANCING_ON
+
+         #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonMaterial.hlsl"
+         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SurfaceInput.hlsl"
+         #include "Packages/com.unity.render-pipelines.universal/Shaders/DepthOnlyPass.hlsl"
+
+         ENDHLSL
+      }
+
+      Pass {
+         Name "DepthNormals"
+         Tags { "LightMode" = "DepthNormals" }
+
+         ZWrite On
+         ZTest LEqual
+
+         HLSLPROGRAM
+         #pragma vertex DepthNormalsVertex
+         #pragma fragment DepthNormalsFragment
+
+         // GPU Instancing
+         #pragma multi_compile_instancing
+         //#pragma multi_compile _ DOTS_INSTANCING_ON
+
+         #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonMaterial.hlsl"
+         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SurfaceInput.hlsl"
+         #include "Packages/com.unity.render-pipelines.universal/Shaders/DepthNormalsPass.hlsl"
+
+         ENDHLSL
       }
    }
 }
