@@ -1,6 +1,6 @@
 ## MS-VRCSA Billiards  
   
-A VRChat Billiards table by Neko Mabel and Sacchan  
+A VRChat Billiards table by Neko Mabel and Sacchan modified to work in basis by dooly
   
 This table is a fork of the Pool Parlor table by metaphira and Toasterly  
 Originally coded by Harry-T  
@@ -146,3 +146,4 @@ Added ability to place balls on top of the rail in practice mode, click while ho
 Added Snooker tie rule, in the case of a tie, the black is replaced, and a random player gets to shoot  
 Added Sliders to the table shader to allow HSV color change of the cloth  
 Removed compression from save/load, shots are no longer slightly different after loading  
+
